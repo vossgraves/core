@@ -146,6 +146,17 @@ jobs:
           Staged here (vossgraves/core:${PR_BRANCH}) by the mirror workflow; merging
           keeps the app's core submodule pin resolvable on 4nx3b/core."
 
+          # gh pr create fails loudly ("No commits between base and head") when
+          # the merged branch is identical to the fork's main -- e.g. the
+          # previous sync PR was already merged and upstream hasn't moved
+          # since. That's a legitimate "nothing to sync" outcome, not a
+          # failure, so check for it before ever calling `gh pr create`.
+          AHEAD="$(git rev-list --count refs/fork/main..HEAD)"
+          if [ "${AHEAD}" -eq 0 ]; then
+            echo "No commits between ${FORK}:main and ${PR_BRANCH} -- nothing to sync, skipping PR."
+            exit 0
+          fi
+
           if ! gh pr list --repo "${FORK}" --head "${GITHUB_REPOSITORY_OWNER}:${PR_BRANCH}" \
               --state open --json number --jq '.[0].number' | grep -q .; then
             gh pr create --repo "${FORK}" \
