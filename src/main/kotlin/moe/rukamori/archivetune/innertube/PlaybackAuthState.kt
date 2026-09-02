@@ -25,12 +25,26 @@ data class PlaybackAuthState(
     val poTokenSubs: String? = null,
     val poTokenSubsVideoId: String? = null,
     val webClientPoTokenEnabled: Boolean = false,
+    /**
+     * OAuth2 access token ("ya29…") for clients that authenticate with a Bearer header instead of
+     * cookies — currently only the ANDROID_VR clients, via the device-code flow.
+     *
+     * Only the *access* token lives here. The refresh token is deliberately not part of this state:
+     * nothing in core refreshes anything, so carrying it would put a long-lived credential into
+     * every fingerprint and log line for no gain. The app owns the refresh lifecycle and pushes a
+     * fresh access token down.
+     */
+    val oauthToken: String? = null,
 ) {
     val hasLoginCookie: Boolean
         get() = hasYouTubeLoginCookie(cookie)
 
     val hasPlaybackLoginContext: Boolean
         get() = hasLoginCookie && !dataSyncId.isNullOrBlank()
+
+    /** True when a Bearer token is available, i.e. the OAuth path can authenticate a request. */
+    val hasOAuthContext: Boolean
+        get() = !oauthToken.isNullOrBlank()
 
     val sessionId: String?
         get() = if (hasPlaybackLoginContext) dataSyncId.userSessionIdOrNull() else visitorData
@@ -51,6 +65,10 @@ data class PlaybackAuthState(
                     poTokenSubs.orEmpty(),
                     poTokenSubsVideoId.orEmpty(),
                     webClientPoTokenEnabled.toString(),
+                    // Included so signing in or out of the OAuth path invalidates the caches keyed
+                    // on this, exactly as a cookie change does. Without it a switch between the
+                    // WebView and OAuth accounts would serve the previous account's responses.
+                    oauthToken.orEmpty(),
                 ).joinToString(separator = "\u0000"),
             )
 
@@ -77,6 +95,7 @@ data class PlaybackAuthState(
             poTokenPlayerVideoId = poTokenPlayerVideoId.normalizeAuthValue(),
             poTokenSubs = poTokenSubs.normalizeAuthValue(),
             poTokenSubsVideoId = poTokenSubsVideoId.normalizeAuthValue(),
+            oauthToken = oauthToken.normalizeAuthValue(),
         )
 
     fun resolvePlayerPoToken(

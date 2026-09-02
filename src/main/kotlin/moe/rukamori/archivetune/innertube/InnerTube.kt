@@ -207,7 +207,17 @@ class InnerTube {
             if (includeVisitorData) {
                 authState.visitorData?.let { append("X-Goog-Visitor-Id", it) }
             }
-            if (setLogin && client.supportsCookieAuthentication) {
+            // Two mutually exclusive auth schemes. Cookie + SAPISIDHASH is the WEB path; Bearer is
+            // the OAuth device-code path used by the ANDROID_VR clients, which ignore cookies.
+            // Sending both would be wrong, so this is an if/else on the client's own capability
+            // rather than a fallthrough — and never an early `return`, which would skip the
+            // request-body context assembled after this block.
+            if (setLogin && client.supportsOAuth2Authentication) {
+                authState.oauthToken?.let { token ->
+                    append("Authorization", "Bearer $token")
+                    append("X-Goog-AuthUser", "0")
+                }
+            } else if (setLogin && client.supportsCookieAuthentication) {
                 authState.cookie?.let { cookie ->
                     append("cookie", cookie)
                     val loginCookieValue = youtubeLoginCookieValue(cookie) ?: return@let
@@ -238,7 +248,15 @@ class InnerTube {
             append("X-Origin", requestOrigin)
             append("Referer", client.requestReferer())
             authState.visitorData?.let { append("X-Goog-Visitor-Id", it) }
-            if (client.supportsCookieAuthentication) {
+            // Same two-scheme split as ytClient(): playback tracking pings have to carry the same
+            // identity as the player request that produced them, or the view is attributed to a
+            // signed-out session.
+            if (client.supportsOAuth2Authentication) {
+                authState.oauthToken?.let { token ->
+                    append("Authorization", "Bearer $token")
+                    append("X-Goog-AuthUser", "0")
+                }
+            } else if (client.supportsCookieAuthentication) {
                 authState.cookie?.let { cookie ->
                     append("cookie", cookie)
                     val loginCookieValue = youtubeLoginCookieValue(cookie) ?: return@let

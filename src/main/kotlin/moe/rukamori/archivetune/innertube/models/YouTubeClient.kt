@@ -27,6 +27,14 @@ data class YouTubeClient(
     val friendlyName: String? = null,
     val loginSupported: Boolean = false,
     val supportsCookieAuthentication: Boolean = false,
+    /**
+     * Client authenticates with an OAuth2 `Authorization: Bearer ya29…` header instead of the
+     * cookie + SAPISIDHASH pair. Mutually exclusive with [supportsCookieAuthentication] in
+     * practice: the ANDROID_VR clients accept a Bearer and ignore cookies, the WEB clients the
+     * reverse. Kept as a separate flag rather than inferred from `!supportsCookieAuthentication`
+     * so a Bearer is never sent to a client that would reject it.
+     */
+    val supportsOAuth2Authentication: Boolean = false,
     val loginRequired: Boolean = false,
     val useSignatureTimestamp: Boolean = false,
     val useWebPoTokens: Boolean = false,
@@ -195,6 +203,10 @@ data class YouTubeClient(
                 userAgent = "com.google.android.youtube/21.10.38 (Linux; U; Android 15; en_US; Pixel 9 Pro; Build/AP4A.250205.002; Cronet/132.0.6834.79) gzip",
                 loginSupported = true,
                 useSignatureTimestamp = true,
+                // The one client wired for the OAuth device-code flow. Client id 28 is what the
+                // YouTube VR OAuth credentials are issued against; the WEB clients stay on
+                // cookie + SAPISIDHASH.
+                supportsOAuth2Authentication = true,
             )
 
         val ANDROID_VR_NO_AUTH =
