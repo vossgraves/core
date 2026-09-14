@@ -70,9 +70,36 @@ data class PlayerResponse(
             val lastModified: Long?,
             val signatureCipher: String?,
             val cipher: String?,
+            /**
+             * Present only when the video carries more than one audio track — YouTube's dubbing.
+             * Absent on the ordinary single-track video, which is why [isDefaultAudioTrack] treats
+             * null as the original rather than as unknown.
+             */
+            val audioTrack: AudioTrack? = null,
         ) {
+            @Serializable
+            data class AudioTrack(
+                /** Human label, e.g. "English original" or "Hindi (dubbed)". Locale-dependent. */
+                val displayName: String? = null,
+                /** Track id carrying the language, e.g. "en-US.4". */
+                val id: String? = null,
+                /** True on the track the video was published in. Exactly one track sets it. */
+                val audioIsDefault: Boolean? = null,
+            )
+
             val isAudio: Boolean
                 get() = width == null
+
+            /**
+             * Whether this is the track the song was actually released in.
+             *
+             * Multi-language videos list every dub as a separate adaptive format, identical in
+             * every field a picker normally sorts on — bitrate, codec, sample rate. Without this,
+             * choosing purely on quality picks a dub whenever one happens to be encoded better,
+             * and the same song plays in a different language depending on which itag won.
+             */
+            val isDefaultAudioTrack: Boolean
+                get() = audioTrack == null || audioTrack.audioIsDefault == true
         }
     }
 
