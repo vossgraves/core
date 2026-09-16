@@ -13,6 +13,11 @@ import moe.rukamori.archivetune.innertube.models.BrowseEndpoint.BrowseEndpointCo
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedConfigs.BrowseEndpointContextMusicConfig.Companion.MUSIC_PAGE_TYPE_AUDIOBOOK
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedConfigs.BrowseEndpointContextMusicConfig.Companion.MUSIC_PAGE_TYPE_PLAYLIST
 
+const val MUSIC_VIDEO_TYPE_PODCAST_EPISODE = "MUSIC_VIDEO_TYPE_PODCAST_EPISODE"
+const val PODCAST_SHOW_BROWSE_PREFIX = "MPSP"
+const val PODCAST_EPISODE_BROWSE_PREFIX = "MPED"
+const val PODCAST_LIBRARY_BROWSE_ID = "FEmusic_library_non_music_audio_list"
+
 @Serializable
 sealed class Endpoint
 
@@ -25,6 +30,12 @@ data class WatchEndpoint(
     val index: Int? = null,
     val watchEndpointMusicSupportedConfigs: WatchEndpointMusicSupportedConfigs? = null,
 ) : Endpoint() {
+    val isPodcastEpisodeEndpoint: Boolean
+        get() =
+            watchEndpointMusicSupportedConfigs
+                ?.watchEndpointMusicConfig
+                ?.musicVideoType == MUSIC_VIDEO_TYPE_PODCAST_EPISODE
+
     @Serializable
     data class WatchEndpointMusicSupportedConfigs(
         val watchEndpointMusicConfig: WatchEndpointMusicConfig,
@@ -48,6 +59,10 @@ data class BrowseEndpoint(
     val params: String? = null,
     val browseEndpointContextSupportedConfigs: BrowseEndpointContextSupportedConfigs? = null,
 ) : Endpoint() {
+    val isPodcastShowEndpoint: Boolean
+        get() = browseId.startsWith(PODCAST_SHOW_BROWSE_PREFIX)
+    val isPodcastEpisodeEndpoint: Boolean
+        get() = browseId.startsWith(PODCAST_EPISODE_BROWSE_PREFIX)
     val isArtistEndpoint: Boolean
         get() = browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType == MUSIC_PAGE_TYPE_ARTIST
     val isAlbumEndpoint: Boolean
