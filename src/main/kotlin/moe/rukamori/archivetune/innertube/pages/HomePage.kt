@@ -20,7 +20,6 @@ import moe.rukamori.archivetune.innertube.models.MusicShelfRenderer
 import moe.rukamori.archivetune.innertube.models.MusicTwoRowItemRenderer
 import moe.rukamori.archivetune.innertube.models.PODCAST_SHOW_BROWSE_PREFIX
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
-import moe.rukamori.archivetune.innertube.models.PODCAST_SHOW_BROWSE_PREFIX
 import moe.rukamori.archivetune.innertube.models.PodcastItem
 import moe.rukamori.archivetune.innertube.models.SectionListRenderer
 import moe.rukamori.archivetune.innertube.models.SongItem
@@ -436,31 +435,6 @@ data class HomePage(
                         null
                     }
                 }
-            }
-
-            private fun List<moe.rukamori.archivetune.innertube.models.Run>.toPodcastArtist(): Artist? =
-                firstNotNullOfOrNull { run ->
-                    run.navigationEndpoint
-                        ?.browseEndpoint
-                        ?.takeIf { it.isPodcastShowEndpoint || it.isArtistEndpoint || it.browseId.startsWith("UC") }
-                        ?.let { Artist(name = run.text, id = it.browseId) }
-                }
-
-            private fun List<moe.rukamori.archivetune.innertube.models.Run>.toPodcastAuthor(): Artist? =
-                toPodcastArtist()
-                    ?: firstOrNull { run -> run.isPodcastMetadataText() && run.text.parseTime() == null }
-                        ?.let { run -> Artist(name = run.text.trim(), id = run.navigationEndpoint?.browseEndpoint?.browseId) }
-
-            private fun List<moe.rukamori.archivetune.innertube.models.Run>.episodeDateText(podcastName: String?): String? =
-                firstOrNull { run ->
-                    run.isPodcastMetadataText() &&
-                        run.text.parseTime() == null &&
-                        run.text.trim() != podcastName
-                }?.text?.trim()
-
-            private fun moe.rukamori.archivetune.innertube.models.Run.isPodcastMetadataText(): Boolean {
-                val normalizedText = text.trim()
-                return normalizedText.isNotBlank() && normalizedText.any(Char::isLetterOrDigit)
             }
 
             private fun fromMusicMultiRowListItemRenderer(renderer: MusicMultiRowListItemRenderer): YTItem? {

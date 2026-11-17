@@ -64,7 +64,6 @@ data class SongItem(
     val isPodcast: Boolean = false,
     override val thumbnailWidth: Int? = null,
     override val thumbnailHeight: Int? = null,
-    val isPodcast: Boolean = false,
 ) : YTItem() {
     override val shareLink: String
         get() = "https://music.youtube.com/watch?v=$id"
