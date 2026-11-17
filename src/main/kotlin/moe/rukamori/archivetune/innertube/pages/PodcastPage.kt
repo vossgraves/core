@@ -22,6 +22,7 @@ data class PodcastPage(
     val description: String?,
     val episodes: List<EpisodeItem>,
     val continuation: String?,
+    val isSaved: Boolean,
 ) {
     data class Continuation(
         val episodes: List<EpisodeItem>,
@@ -79,6 +80,7 @@ data class PodcastPage(
                 description = description,
                 episodes = episodes.map { episode -> episode.copy(podcast = episode.podcast ?: showArtist) },
                 continuation = shelf?.continuations?.getContinuation() ?: shelf?.contents.orEmpty().getContinuation(),
+                isSaved = header.buttons.any { button -> button.toggleButtonRenderer?.isToggled == true },
             )
         }
 
@@ -148,13 +150,16 @@ internal fun MusicMultiRowListItemRenderer.toEpisodeItem(): EpisodeItem? {
 private fun moe.rukamori.archivetune.innertube.models.Runs.textOrNull(): String? =
     runs?.joinToString(separator = "") { it.text }?.trim()?.takeIf(String::isNotBlank)
 
-private fun List<Run>.toPodcastArtist(): Artist? =
-    firstNotNullOfOrNull { run ->
+private fun List<Run>.toPodcastArtist(): Artist? {
+    val show = firstOrNull { it.navigationEndpoint?.browseEndpoint?.isPodcastShowEndpoint == true }
+    if (show != null) return Artist(name = show.text, id = show.navigationEndpoint?.browseEndpoint?.browseId)
+    return firstNotNullOfOrNull { run ->
         run.navigationEndpoint
             ?.browseEndpoint
             ?.takeIf { it.isPodcastShowEndpoint || it.isArtistEndpoint || it.browseId.startsWith("UC") }
             ?.let { Artist(name = run.text, id = it.browseId) }
     }
+}
 
 private fun List<Run>.episodeDateText(podcastName: String?): String? =
     firstOrNull { run ->

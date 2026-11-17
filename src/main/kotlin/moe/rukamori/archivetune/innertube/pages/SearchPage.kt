@@ -15,6 +15,7 @@ import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.MusicResponsiveListItemRenderer
 import moe.rukamori.archivetune.innertube.models.PODCAST_SHOW_BROWSE_PREFIX
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
+import moe.rukamori.archivetune.innertube.models.PODCAST_SHOW_BROWSE_PREFIX
 import moe.rukamori.archivetune.innertube.models.PodcastItem
 import moe.rukamori.archivetune.innertube.models.Run
 import moe.rukamori.archivetune.innertube.models.SongItem
@@ -130,13 +131,24 @@ object SearchPage {
 
             renderer.isAlbum -> {
                 val itemThumbnail = thumbnail ?: return null
+                val browseId = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null
                 AlbumItem(
-                    browseId = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null,
+                    browseId = browseId,
                     playlistId =
                         renderer
                             .watchEndpoint()
                             ?.playlistId
-                            ?: return null,
+                            ?: renderer.menu
+                                ?.menuRenderer
+                                ?.items
+                                .orEmpty()
+                                .firstNotNullOfOrNull { item ->
+                                    item.menuNavigationItemRenderer
+                                        ?.navigationEndpoint
+                                        ?.watchPlaylistEndpoint
+                                        ?.playlistId
+                                }
+                            ?: browseId.removePrefix("MPREb_").let { "OLAK5uy_$it" },
                     title = title,
                     artists = metadata.getOrNull(0)?.toArtists()?.takeIf { it.isNotEmpty() },
                     year = metadata.year(),
@@ -160,6 +172,7 @@ object SearchPage {
                     title = title,
                     author = playlistMetadata.playlistAuthor(),
                     songCountText = playlistMetadata.lastText(),
+                    viewCount = playlistMetadata.viewCount(),
                     thumbnail = thumbnail?.normalizedUrl,
                     thumbnailWidth = thumbnail?.width,
                     thumbnailHeight = thumbnail?.height,
@@ -220,7 +233,8 @@ private fun MusicResponsiveListItemRenderer.metadataGroups(clean: Boolean = true
     return if (clean) groups.clean() else groups
 }
 
-private fun MusicResponsiveListItemRenderer.watchEndpoint(): WatchEndpoint? = resolvedWatchEndpoint
+private fun MusicResponsiveListItemRenderer.watchEndpoint(): WatchEndpoint? =
+    resolvedWatchEndpoint
 
 private fun MusicResponsiveListItemRenderer.episodeBrowseId(): String? =
     flexColumns
@@ -248,8 +262,10 @@ private fun List<List<Run>>.durationText(): String? {
     return null
 }
 
-private fun List<List<Run>>.podcastArtist(): Artist? =
-    asSequence()
+private fun List<List<Run>>.podcastArtist(): Artist? {
+    val show = asSequence().flatten().firstOrNull { it.navigationEndpoint?.browseEndpoint?.isPodcastShowEndpoint == true }
+    if (show != null) return Artist(name = show.text, id = show.navigationEndpoint?.browseEndpoint?.browseId)
+    return asSequence()
         .flatten()
         .firstNotNullOfOrNull { run ->
             run.navigationEndpoint
@@ -257,6 +273,7 @@ private fun List<List<Run>>.podcastArtist(): Artist? =
                 ?.takeIf { it.isPodcastShowEndpoint || it.isArtistEndpoint || it.browseId.startsWith("UC") }
                 ?.let { Artist(name = run.text, id = it.browseId) }
         }
+}
 
 private fun List<List<Run>>.firstTextExcludingDuration(): String? =
     asSequence()
@@ -287,7 +304,16 @@ private fun List<List<Run>>.viewCountText(): String? =
 private fun List<List<Run>>.viewCount(): Long? = viewCountText()?.let(::parseViewCount)
 
 private fun parseViewCount(text: String): Long? {
-    val match = ViewCountRegex.find(text) ?: return null
+    val timecodeRanges = TimecodeRegex.findAll(text).map { it.range }.toList()
+    val match =
+        ViewCountRegex
+            .findAll(text)
+            .lastOrNull { viewCountMatch ->
+                timecodeRanges.none { timecodeRange ->
+                    viewCountMatch.range.first <= timecodeRange.last &&
+                        timecodeRange.first <= viewCountMatch.range.last
+                }
+            } ?: return null
     val numberText = match.groupValues[1]
     val suffix = match.groupValues[2].uppercase()
     val value =
@@ -324,3 +350,4 @@ private fun List<List<Run>>.lastText(): String? =
         ?.takeIf { it.isNotBlank() }
 
 private val ViewCountRegex = Regex("""([\d.,]+)\s*([KMB]?)""", RegexOption.IGNORE_CASE)
+private val TimecodeRegex = Regex("""(?:\d+:)?\d{1,2}:\d{2}""")

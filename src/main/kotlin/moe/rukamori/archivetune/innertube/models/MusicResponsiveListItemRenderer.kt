@@ -57,7 +57,9 @@ data class MusicResponsiveListItemRenderer(
     val isSong: Boolean
         get() =
             !isEpisode &&
-                (navigationEndpoint == null || navigationEndpoint.watchEndpoint != null || navigationEndpoint.watchPlaylistEndpoint != null)
+                (navigationEndpoint == null ||
+                    navigationEndpoint.watchEndpoint != null ||
+                    navigationEndpoint.watchPlaylistEndpoint != null)
     val isPlaylist: Boolean
         get() =
             navigationEndpoint
